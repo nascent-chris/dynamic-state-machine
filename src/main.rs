@@ -2,11 +2,11 @@ mod config;
 mod models;
 mod state_machine;
 
+use anyhow::Result;
 use state_machine::StateMachine;
-use std::error::Error;
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
+async fn main() -> Result<()> {
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::DEBUG)
         .init();

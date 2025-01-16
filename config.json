@@ -2,15 +2,29 @@
   "initial_state": "start",
   "states": {
     "start": {
-      "action": "call_api",
+      "action": [
+        {
+          "call_api": {
+            "url": "https://api.example.com",
+            "auth_header_name": "Authorization",
+            "auth_header_value": "Bearer your_token_here"
+          }
+        },
+        {
+          "llm": {
+            "user_prompt": "{input} What is the weather in Tokyo? input: {input}",
+            "system_prompt": "You are a weather expert."
+          }
+        }
+      ],
       "next_state": "process"
     },
     "process": {
-      "action": "process_response",
+      "action": ["process_response"],
       "next_state": "finalize"
     },
     "finalize": {
-      "action": "finalize",
+      "action": ["finalize"],
       "next_state": null
     }
   }

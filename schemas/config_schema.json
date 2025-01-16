@@ -1,0 +1,77 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Config",
+  "type": "object",
+  "required": ["initial_state_key", "states"],
+  "properties": {
+    "initial_state_key": {
+      "type": "string",
+      "description": "The key of the initial state.",
+      "aliases": ["initial_state"]
+    },
+    "states": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/StateConfig"
+      }
+    }
+  },
+  "definitions": {
+    "StateConfig": {
+      "type": "object",
+      "required": ["action"],
+      "properties": {
+        "action": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/Action" }
+        },
+        "next_state": {
+          "type": ["string", "null"],
+          "description": "Optional next state."
+        }
+      }
+    },
+    "Action": {
+      "oneOf": [
+        { "$ref": "#/definitions/CallApi" },
+        { "$ref": "#/definitions/Llm" },
+        { "const": "process_response" },
+        { "const": "finalize" }
+      ]
+    },
+    "CallApi": {
+      "type": "object",
+      "properties": {
+        "call_api": { "$ref": "#/definitions/CallApiData" }
+      },
+      "required": ["call_api"],
+      "additionalProperties": false
+    },
+    "Llm": {
+      "type": "object",
+      "properties": {
+        "llm": { "$ref": "#/definitions/LlmData" }
+      },
+      "required": ["llm"],
+      "additionalProperties": false
+    },
+    "CallApiData": {
+      "type": "object",
+      "properties": {
+        "url": { "type": "string" },
+        "auth_header_name": { "type": "string" },
+        "auth_header_value": { "type": "string" }
+      },
+      "required": ["url", "auth_header_name", "auth_header_value"],
+      "additionalProperties": false
+    },
+    "LlmData": {
+      "type": "object",
+      "properties": {
+        "prompt": { "type": "string" }
+      },
+      "required": ["prompt"],
+      "additionalProperties": false
+    }
+  }
+}
