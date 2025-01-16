@@ -1,0 +1,17 @@
+{
+  "initial_state": "start",
+  "states": {
+    "start": {
+      "action": "call_api",
+      "next_state": "process"
+    },
+    "process": {
+      "action": "process_response",
+      "next_state": "finalize"
+    },
+    "finalize": {
+      "action": "finalize",
+      "next_state": null
+    }
+  }
+}
