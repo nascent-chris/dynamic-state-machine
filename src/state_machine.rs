@@ -1,13 +1,13 @@
-use tracing::Instrument;
+use std::future::Future;
 
-use crate::config::{Action, Config};
-use crate::models::{ApiResponse, ProcessedData};
-use std::error::Error;
+use tracing::Instrument as _;
+
+use crate::config::{Action, ActionDiscriminants, Config};
+use crate::models::AgentData;
 
 pub struct StateMachine {
     config: Config,
     current_state_key: String,
-    response_buffer: Option<String>,
 }
 
 impl StateMachine {
@@ -17,7 +17,6 @@ impl StateMachine {
         Ok(Self {
             config,
             current_state_key,
-            response_buffer: None,
         })
     }
 
@@ -27,43 +26,50 @@ impl StateMachine {
         Ok(config)
     }
 
-    pub async fn run(&mut self) -> Result<(), anyhow::Error> {
-        // Start of Selection
-        while let Some(state_config) = self.config.states.get(&self.current_state_key) {
-            tracing::debug!(state_key = self.current_state_key, "entering state");
-            let state_config = state_config.clone();
-            for action in state_config.action {
-                self.execute_action(action.clone())
-                    .instrument(tracing::debug_span!("action", action = ?action))
-                    .await?;
+    pub fn run(self) -> impl Future<Output = anyhow::Result<()>> + Send + 'static {
+        tracing::info!("starting state machine");
+        let mut next_state_key = self.current_state_key.clone();
+
+        async move {
+            while let Some(state_config) = self.config.states.get(&next_state_key).cloned() {
+                // tracing::debug!(state_key = next_state_key, "entering state");
+                let state_config = state_config.clone();
+                for action in state_config.action {
+                    // let dummy_response_buffer = Some(String::from("API response"));
+                    let action_discriminant = ActionDiscriminants::from(&action);
+                    self.execute_action(action, None)
+                        .instrument(tracing::debug_span!("action", action = ?action_discriminant))
+                        .await?;
+                }
+
+                if let Some(next_state) = state_config.next_state {
+                    tracing::debug!(
+                        state_key = next_state_key,
+                        next_state = next_state,
+                        "exiting state"
+                    );
+                    next_state_key = next_state;
+                } else {
+                    tracing::info!(
+                        state_key = next_state_key,
+                        "no next state. State machine is terminating."
+                    );
+                    break;
+                }
             }
 
-            if let Some(next_state) = state_config.next_state {
-                tracing::debug!(
-                    state_key = self.current_state_key,
-                    next_state = next_state,
-                    "exiting state"
-                );
-                self.current_state_key = next_state;
-            } else {
-                tracing::info!(
-                    state_key = self.current_state_key,
-                    "no next state. State machine is terminating."
-                );
-                break;
-            }
+            Ok(())
         }
-        Ok(())
     }
 
-    pub async fn execute_action(&mut self, action: Action) -> Result<(), anyhow::Error> {
-        let response_buffer = self.response_buffer.take();
-        tracing::debug!(?action, "executing action");
+    pub async fn execute_action(
+        &self,
+        action: Action,
+        response_buffer: Option<String>,
+    ) -> Result<Option<String>, anyhow::Error> {
         match action {
             Action::CallApi(_call_api_data) => {
-                // Use call_api_data.url, call_api_data.auth_header_name, call_api_data.auth_header_value
-                // Perform the API call without unnecessary cloning
-                self.response_buffer = Some(String::from("API response"));
+                //
             }
             Action::ProcessResponse => {
                 // Handle processing response
@@ -75,33 +81,37 @@ impl StateMachine {
                 // Handle LLM processing
                 // replace `{input}` in llm_data.prompt with response_buffer
                 let prompt = if let Some(response_buffer) = response_buffer {
-                    tracing::info!(?response_buffer, "using response buffer");
+                    tracing::debug!(?response_buffer, "using response buffer");
                     llm_data
                         .user_prompt
                         .replace("{input}", response_buffer.as_str())
                 } else {
-                    tracing::info!("no response buffer");
+                    tracing::debug!("no response buffer");
                     llm_data.user_prompt.clone()
                 };
 
-                tracing::info!("prompt: {}", prompt);
+                tracing::info!(?prompt, "prompt");
+            }
+            Action::SpawnAgent(agent_data) => {
+                // Spawn a new agent
+                tracing::info!(?agent_data, "spawning agent");
+
+                spawn_new_agent(agent_data).await?;
             }
         }
-        Ok(())
+        // TODO: return response buffer
+        let response_buffer = None;
+        Ok(response_buffer)
     }
+}
+async fn spawn_new_agent(agent_data: AgentData) -> Result<(), anyhow::Error> {
+    tokio::spawn(async move {
+        let agent_state_machine = StateMachine::new(&agent_data.agent_config_file).await?;
+        agent_state_machine.run().await?;
 
-    // async fn call_api(&self) -> Result<ApiResponse, Box<dyn Error>> {
-    //     // Implement the API call asynchronously
-    //     Ok(ApiResponse::default())
-    // }
+        Ok::<(), anyhow::Error>(())
+    })
+    .await??;
 
-    // async fn process_response(&self) -> Result<(), Box<dyn Error>> {
-    //     // Implement your processing logic here
-    //     Ok(())
-    // }
-
-    // async fn finalize(&self) -> Result<(), Box<dyn Error>> {
-    //     // Implement your finalization logic here
-    //     Ok(())
-    // }
+    Ok(())
 }

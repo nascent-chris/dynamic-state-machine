@@ -15,6 +15,11 @@
             "user_prompt": "{input} What is the weather in Tokyo? input: {input}",
             "system_prompt": "You are a weather expert."
           }
+        },
+        {
+          "spawn_agent": {
+            "agent_config_file": "agent_config.json"
+          }
         }
       ],
       "next_state": "process"

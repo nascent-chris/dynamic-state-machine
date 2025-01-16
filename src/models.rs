@@ -22,3 +22,8 @@ pub struct LlmData {
     pub user_prompt: String,
     pub system_prompt: Option<String>,
 }
+
+#[derive(Debug, Default, Clone, Deserialize, Serialize)]
+pub struct AgentData {
+    pub agent_config_file: String,
+}

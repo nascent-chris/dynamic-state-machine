@@ -1,0 +1,20 @@
+{
+  "initial_state": "start",
+  "states": {
+    "start": {
+      "action": [
+        {
+          "llm": {
+            "user_prompt": "Provide a detailed weather report for Tokyo.",
+            "system_prompt": "You are a knowledgeable weather assistant."
+          }
+        }
+      ],
+      "next_state": "finalize"
+    },
+    "finalize": {
+      "action": ["finalize"],
+      "next_state": null
+    }
+  }
+}
