@@ -1,4 +1,4 @@
-use crate::models::{AgentData, CallApiData, LlmData};
+use crate::models::{AgentData, CallApiData, LlmData, WaitForInputData};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use strum_macros::EnumDiscriminants;
@@ -20,10 +20,11 @@ pub struct StateConfig {
 #[serde(rename_all = "snake_case")]
 pub enum Action {
     CallApi(CallApiData),
+    Finalize,
     Llm(LlmData),
     ProcessResponse,
     SpawnAgent(AgentData),
-    Finalize,
+    WaitForInput,
 }
 
 // Start of Selection

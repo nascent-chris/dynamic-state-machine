@@ -11,9 +11,10 @@ async fn main() -> Result<()> {
         .with_max_level(tracing::Level::DEBUG)
         .init();
 
-    let mut state_machine = StateMachine::new("config.json").await?;
+    let state_machine = StateMachine::new("config.json").await?;
     state_machine.run().await?;
 
     tracing::info!("State machine execution completed.");
+
     Ok(())
 }

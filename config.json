@@ -26,6 +26,10 @@
     },
     "process": {
       "action": ["process_response"],
+      "next_state": "wait_for_input"
+    },
+    "wait_for_input": {
+      "action": ["wait_for_input"],
       "next_state": "finalize"
     },
     "finalize": {

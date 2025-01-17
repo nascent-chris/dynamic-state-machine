@@ -27,3 +27,8 @@ pub struct LlmData {
 pub struct AgentData {
     pub agent_config_file: String,
 }
+
+#[derive(Debug, Default, Clone, Deserialize, Serialize)]
+pub struct WaitForInputData {
+    pub data: String,
+}

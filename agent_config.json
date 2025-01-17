@@ -5,7 +5,7 @@
       "action": [
         {
           "llm": {
-            "user_prompt": "Provide a detailed weather report for Tokyo.",
+            "user_prompt": "Provide a detailed weather report for Tokyo. env: {env:RUST_LOG}",
             "system_prompt": "You are a knowledgeable weather assistant."
           }
         }
