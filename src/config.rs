@@ -1,4 +1,4 @@
-use crate::models::{AgentData, CallApiData, LlmData, WaitForInputData};
+use crate::models::{AgentData, CallApiData, LlmData};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use strum_macros::EnumDiscriminants;
@@ -20,30 +20,7 @@ pub struct StateConfig {
 #[serde(rename_all = "snake_case")]
 pub enum Action {
     CallApi(CallApiData),
-    Finalize,
     Llm(LlmData),
-    ProcessResponse,
     SpawnAgent(AgentData),
     WaitForInput,
 }
-
-// Start of Selection
-// impl<'de> serde::Deserialize<'de> for Config {
-//     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-//     where
-//         D: serde::Deserializer<'de>,
-//     {
-//         #[derive(Deserialize)]
-//         struct ConfigHelper {
-//             initial_state: String,
-//             states: HashMap<String, StateConfig>,
-//         }
-
-//         let helper = ConfigHelper::deserialize(deserializer)?;
-
-//         Ok(Config {
-//             initial_state_key: helper.initial_state,
-//             states: helper.states,
-//         })
-//     }
-// }

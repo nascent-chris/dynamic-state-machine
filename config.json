@@ -1,18 +1,20 @@
 {
-  "initial_state": "start",
+  "initial_state_key": "start",
   "states": {
     "start": {
       "action": [
         {
           "call_api": {
-            "url": "https://api.example.com",
+            "url": "https://www.google.com",
             "auth_header_name": "Authorization",
-            "auth_header_value": "Bearer your_token_here"
+            "auth_header_value": "Bearer your_token_here",
+            "method": "POST",
+            "body": null
           }
         },
         {
           "llm": {
-            "user_prompt": "{input} What is the weather in Tokyo? input: {input}",
+            "user_prompt": "What is the weather in Tokyo? {input}",
             "system_prompt": "You are a weather expert."
           }
         },
@@ -25,15 +27,32 @@
       "next_state": "process"
     },
     "process": {
-      "action": ["process_response"],
+      "action": [
+        {
+          "call_api": {
+            "url": "https://www.google.com",
+            "auth_header_name": "Authorization",
+            "auth_header_value": "Bearer your_token_here",
+            "method": "POST",
+            "body": "{\"data\": \"process this data\"}"
+          }
+        },
+        {
+          "llm": {
+            "user_prompt": "Please analyze the following data: {input}",
+            "system_prompt": "You are a data analyst."
+          }
+        },
+        {
+          "spawn_agent": {
+            "agent_config_file": "agent_config.json"
+          }
+        }
+      ],
       "next_state": "wait_for_input"
     },
     "wait_for_input": {
       "action": ["wait_for_input"],
-      "next_state": "finalize"
-    },
-    "finalize": {
-      "action": ["finalize"],
       "next_state": null
     }
   }
