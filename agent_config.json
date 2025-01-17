@@ -2,7 +2,7 @@
   "initial_state": "start",
   "states": {
     "start": {
-      "action": [
+      "actions": [
         {
           "llm": {
             "user_prompt": "Provide a detailed weather report for Tokyo. env: {env:RUST_LOG}",
@@ -13,7 +13,7 @@
       "next_state": "finalize"
     },
     "finalize": {
-      "action": [],
+      "actions": [],
       "next_state": null
     }
   }

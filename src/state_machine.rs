@@ -45,7 +45,7 @@ impl StateMachine {
             let mut response_buffer = Some("intitial input!".to_string());
             while let Some(state_config) = self.config.states.get(&next_state_key) {
                 tracing::info!(state_key = %next_state_key, "executing state");
-                for action in &state_config.action {
+                for action in &state_config.actions {
                     let action_discriminant = ActionDiscriminants::from(action);
                     response_buffer = self
                         .execute_action(action.clone(), response_buffer.as_ref())
@@ -103,12 +103,16 @@ impl StateMachine {
                 tracing::info!(?agent_data, "spawning agent");
                 let config_file = agent_data.agent_config_file.clone();
 
-                tokio::spawn(async move {
+                let res = tokio::spawn(async move {
                     let agent_state_machine = StateMachine::new(&config_file).await?;
                     agent_state_machine.run().await
                 })
-                .await??;
-                Ok(None)
+                .await?
+                .ok();
+
+                tracing::debug!(?res, "agent result");
+
+                Ok(res)
             }
             Action::WaitForInput => {
                 let mut input_rx = self.input_tx.subscribe();

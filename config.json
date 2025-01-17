@@ -2,7 +2,7 @@
   "initial_state_key": "start",
   "states": {
     "start": {
-      "action": [
+      "actions": [
         {
           "call_api": {
             "url": "https://www.google.com",
@@ -27,7 +27,7 @@
       "next_state": "process"
     },
     "process": {
-      "action": [
+      "actions": [
         {
           "call_api": {
             "url": "https://www.google.com",
@@ -52,7 +52,7 @@
       "next_state": "wait_for_input"
     },
     "wait_for_input": {
-      "action": ["wait_for_input"],
+      "actions": ["wait_for_input"],
       "next_state": null
     }
   }

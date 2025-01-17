@@ -43,16 +43,6 @@ pub struct CallApiData {
     pub body: Option<String>,
 }
 
-#[derive(Debug, Default)]
-pub struct ApiResponse {
-    // Fields representing API response
-}
-
-#[derive(Debug, Default)]
-pub struct ProcessedData {
-    // Fields representing processed data
-}
-
 #[derive(Debug, Default, Clone, Deserialize, Serialize)]
 pub struct LlmData {
     pub user_prompt: String,

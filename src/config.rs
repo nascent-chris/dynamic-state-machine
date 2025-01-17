@@ -12,7 +12,7 @@ pub struct Config {
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct StateConfig {
-    pub action: Vec<Action>,
+    pub actions: Vec<Action>,
     pub next_state: Option<String>,
 }
 
