@@ -52,6 +52,8 @@ pub struct LlmData {
 #[derive(Debug, Default, Clone, Deserialize, Serialize)]
 pub struct AgentData {
     pub agent_config_file: String,
+    pub label: String,
+    pub is_background: bool,
 }
 
 #[derive(Debug, Default, Clone, Deserialize, Serialize)]

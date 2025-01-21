@@ -1,58 +1,32 @@
 {
-  "initial_state_key": "start",
+  "initial_state": "initialize",
+  "label": "MainAgent",
   "states": {
-    "start": {
+    "initialize": {
       "actions": [
         {
-          "call_api": {
-            "url": "https://www.google.com",
-            "auth_header_name": "Authorization",
-            "auth_header_value": "Bearer your_token_here",
-            "method": "POST",
-            "body": null
-          }
-        },
-        {
-          "llm": {
-            "user_prompt": "What is the weather in Tokyo? {input}",
-            "system_prompt": "You are a weather expert."
-          }
-        },
-        {
           "spawn_agent": {
-            "agent_config_file": "agent_config.json"
+            "agent_config_file": "agent_config.json",
+            "label": "WeatherAgent",
+            "is_background": false
           }
         }
       ],
-      "next_state": "process"
+      "next_state": "wait_result"
     },
-    "process": {
-      "actions": [
-        {
-          "call_api": {
-            "url": "https://www.google.com",
-            "auth_header_name": "Authorization",
-            "auth_header_value": "Bearer your_token_here",
-            "method": "POST",
-            "body": "{\"data\": \"process this data\"}"
-          }
-        },
-        {
-          "llm": {
-            "user_prompt": "Please analyze the following data: {input}",
-            "system_prompt": "You are a data analyst."
-          }
-        },
-        {
-          "spawn_agent": {
-            "agent_config_file": "agent_config.json"
-          }
-        }
-      ],
-      "next_state": "wait_for_input"
-    },
-    "wait_for_input": {
+    "wait_result": {
       "actions": ["wait_for_input"],
+      "next_state": "process_result"
+    },
+    "process_result": {
+      "actions": [
+        {
+          "llm": {
+            "user_prompt": "Process the result from the agent. {input}",
+            "system_prompt": "You are processing the agent's output."
+          }
+        }
+      ],
       "next_state": null
     }
   }

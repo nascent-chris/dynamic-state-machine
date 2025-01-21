@@ -1,5 +1,6 @@
 {
   "initial_state": "start",
+  "label": "WeatherAgent",
   "states": {
     "start": {
       "actions": [

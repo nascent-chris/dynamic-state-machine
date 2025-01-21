@@ -7,11 +7,12 @@ use strum_macros::EnumDiscriminants;
 pub struct Config {
     #[serde(alias = "initial_state")]
     pub initial_state_key: String,
-    pub states: HashMap<String, StateConfig>,
+    pub label: String,
+    pub states: HashMap<String, AgentConfig>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct StateConfig {
+pub struct AgentConfig {
     pub actions: Vec<Action>,
     pub next_state: Option<String>,
 }
@@ -21,6 +22,11 @@ pub struct StateConfig {
 pub enum Action {
     CallApi(CallApiData),
     Llm(LlmData),
-    SpawnAgent(AgentData),
+    SpawnAgent {
+        #[serde(flatten)]
+        agent_data: AgentData,
+    },
     WaitForInput,
+    GetAgentConfig(String),
+    SetAgentConfig(String),
 }
