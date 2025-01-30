@@ -1,3 +1,4 @@
+use crate::config::Config;
 use serde::{Deserialize, Serialize};
 
 // Start of Selection
@@ -49,11 +50,20 @@ pub struct LlmData {
     pub system_prompt: Option<String>,
 }
 
-#[derive(Debug, Default, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct AgentData {
-    pub agent_config_file: String,
-    pub label: String,
+    #[serde(flatten)]
+    pub config_source: AgentConfigSource,
+    pub input_label: String,
+    pub output_label: String,
     pub is_background: bool,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(untagged)]
+pub enum AgentConfigSource {
+    File { agent_config_file: String },
+    Inline { agent_config: Config },
 }
 
 #[derive(Debug, Default, Clone, Deserialize, Serialize)]

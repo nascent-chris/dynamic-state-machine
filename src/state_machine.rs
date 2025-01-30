@@ -1,22 +1,27 @@
 use anyhow::Context as _;
+use futures::Stream;
 use regex::Regex;
 use serde::Deserialize;
 use tokio::sync::{broadcast, mpsc};
 
+use std::collections::HashMap;
 use std::env;
 use std::future::Future;
+use std::ops::Not;
 use std::{borrow::Cow, time::Duration};
 use tracing::Instrument as _;
 
 use crate::config::{Action, ActionDiscriminants, Config};
-use crate::models::CallApiData;
+use crate::models::{AgentConfigSource, CallApiData};
 
 pub struct StateMachine {
     config: Config,
     current_state_key: String,
-    input_tx: broadcast::Sender<String>,
+    input_rx: Option<broadcast::Receiver<String>>,
+    output_tx: Option<broadcast::Sender<String>>,
     config_update_tx: mpsc::Sender<Config>,
     config_update_rx: mpsc::Receiver<Config>,
+    streams_map: HashMap<String, broadcast::Sender<String>>,
 }
 
 impl StateMachine {
@@ -25,14 +30,32 @@ impl StateMachine {
             .await
             .with_context(|| format!("failed to load config from {}", config_path))?;
         let current_state_key = config.initial_state_key.clone();
-        let (input_tx, _) = broadcast::channel(100);
+
         let (config_update_tx, config_update_rx) = mpsc::channel(100);
+
+        let mut streams_map = HashMap::new();
+
+        // for every SpawnAgent action, create a new stream and add it to the streams_map
+        for action in config
+            .states
+            .values()
+            .flat_map(|state| state.actions.iter())
+        {
+            if let Action::SpawnAgent { agent_data } = action {
+                let (tx, _) = broadcast::channel(100);
+
+                streams_map.insert(agent_data.output_label.clone(), tx);
+            }
+        }
+
         Ok(Self {
             config,
             current_state_key,
-            input_tx,
+            input_rx: None,
+            output_tx: None,
             config_update_tx,
             config_update_rx,
+            streams_map,
         })
     }
 
@@ -92,7 +115,16 @@ impl StateMachine {
                         next_state = %processed_next_state,
                         "exiting state"
                     );
-                    next_state_key = processed_next_state;
+                    if self.config.states.contains_key(&processed_next_state) {
+                        next_state_key = processed_next_state;
+                    } else {
+                        tracing::error!(
+                            state_key = %next_state_key,
+                            next_state = %processed_next_state,
+                            "next state not found"
+                        );
+                        break;
+                    }
                 } else {
                     tracing::info!(
                         state_key = %next_state_key,
@@ -144,11 +176,33 @@ impl StateMachine {
             }
             Action::SpawnAgent { agent_data } => {
                 tracing::info!(?agent_data, "spawning agent");
-                // Start of Selection
-                let config_file = agent_data.agent_config_file.clone();
+
+                // Retrieve the agent's config
+                let agent_config = match &agent_data.config_source {
+                    AgentConfigSource::File { agent_config_file } => {
+                        Self::load_config_from_path(agent_config_file)
+                            .await
+                            .with_context(|| {
+                                format!("failed to load config from {}", agent_config_file)
+                            })?
+                    }
+                    AgentConfigSource::Inline { agent_config } => agent_config.clone(),
+                };
+
+                let input_rx = self
+                    .streams_map
+                    .get(&agent_data.input_label)
+                    .map(|tx| tx.subscribe());
+
+                let output_tx = self
+                    .streams_map
+                    .get(&agent_data.output_label)
+                    .map(|tx| tx.clone());
 
                 let res = tokio::spawn(async move {
-                    let agent_state_machine = StateMachine::new(&config_file).await?;
+                    let mut agent_state_machine = StateMachine::new_with_config(agent_config);
+                    agent_state_machine.input_rx = input_rx;
+                    agent_state_machine.output_tx = output_tx;
                     agent_state_machine.run().await
                 })
                 .await??;
@@ -158,7 +212,10 @@ impl StateMachine {
                 Ok(Some(res.join("\n")))
             }
             Action::WaitForInput => {
-                let mut input_rx = self.input_tx.subscribe();
+                let Some(mut input_rx) = self.input_rx.as_ref().map(|rx| rx.resubscribe()) else {
+                    tracing::error!("no input channel found");
+                    return Ok(None);
+                };
                 match tokio::time::timeout(Duration::from_secs(10), input_rx.recv()).await {
                     Ok(Ok(input)) => {
                         tracing::info!(input = %input, "received input");
@@ -177,6 +234,15 @@ impl StateMachine {
                         Ok(None)
                     }
                 }
+            }
+            Action::Yield => {
+                tracing::info!("yielding");
+                if let Some(output_tx) = self.output_tx.as_ref() {
+                    if let Some(response) = response_buffer.first() {
+                        output_tx.send(response.clone())?;
+                    }
+                }
+                Ok(None)
             }
             Action::GetAgentConfig(label) => {
                 tracing::info!(label = %label, "getting agent config");
@@ -237,6 +303,20 @@ impl StateMachine {
 
         Ok(result.into_owned())
     }
+
+    pub fn new_with_config(config: Config) -> Self {
+        let current_state_key = config.initial_state_key.clone();
+        let (config_update_tx, config_update_rx) = mpsc::channel(100);
+        Self {
+            config,
+            current_state_key,
+            input_rx: None,
+            output_tx: None,
+            config_update_tx,
+            config_update_rx,
+            streams_map: HashMap::new(),
+        }
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -268,17 +348,28 @@ mod tests {
             )]
             .into_iter()
             .collect(),
+            output_stream: None,
         };
 
+        let (input_tx, _) = broadcast::channel(1);
+        let (config_update_tx, config_update_rx) = mpsc::channel(1);
         let state_machine = StateMachine {
             config,
             current_state_key: "start".to_string(),
-            input_tx: broadcast::channel(1).0,
-            config_update_tx: mpsc::channel(1).0,
-            config_update_rx: mpsc::channel(1).1,
+            input_rx: Some(input_tx.subscribe()),
+            output_tx: None,
+            config_update_tx,
+            config_update_rx,
+            streams_map: HashMap::new(),
         };
+
+        //wait for 1ms to make sure the input_tx is ready
+        tokio::time::sleep(Duration::from_millis(1)).await;
+        input_tx.send("test".to_string()).unwrap();
 
         let responses = state_machine.run().await.unwrap();
         // Assert on responses
+        assert_eq!(responses.len(), 1);
+        assert_eq!(responses[0], "test");
     }
 }

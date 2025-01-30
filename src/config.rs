@@ -9,6 +9,7 @@ pub struct Config {
     pub initial_state_key: String,
     pub label: String,
     pub states: HashMap<String, AgentConfig>,
+    pub output_stream: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -27,6 +28,7 @@ pub enum Action {
         agent_data: AgentData,
     },
     WaitForInput,
+    Yield,
     GetAgentConfig(String),
     SetAgentConfig(String),
 }

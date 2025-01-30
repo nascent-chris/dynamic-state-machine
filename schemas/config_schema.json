@@ -2,26 +2,34 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Config",
   "type": "object",
-  "required": ["initial_state_key", "states"],
+  "required": ["initial_state_key", "label", "states"],
   "properties": {
     "initial_state_key": {
       "type": "string",
       "description": "The key of the initial state.",
       "aliases": ["initial_state"]
     },
+    "label": {
+      "type": "string",
+      "description": "Label for the agent."
+    },
     "states": {
       "type": "object",
       "additionalProperties": {
-        "$ref": "#/definitions/StateConfig"
+        "$ref": "#/definitions/AgentConfig"
       }
+    },
+    "output_stream": {
+      "type": ["string", "null"],
+      "description": "Optional output stream."
     }
   },
   "definitions": {
-    "StateConfig": {
+    "AgentConfig": {
       "type": "object",
-      "required": ["action"],
+      "required": ["actions"],
       "properties": {
-        "action": {
+        "actions": {
           "type": "array",
           "items": { "$ref": "#/definitions/Action" }
         },
@@ -29,14 +37,17 @@
           "type": ["string", "null"],
           "description": "Optional next state."
         }
-      }
+      },
+      "additionalProperties": false
     },
     "Action": {
       "oneOf": [
         { "$ref": "#/definitions/CallApi" },
         { "$ref": "#/definitions/Llm" },
-        { "const": "process_response" },
-        { "const": "finalize" }
+        { "$ref": "#/definitions/SpawnAgent" },
+        { "$ref": "#/definitions/WaitForInput" },
+        { "$ref": "#/definitions/GetAgentConfig" },
+        { "$ref": "#/definitions/SetAgentConfig" }
       ]
     },
     "CallApi": {
@@ -47,6 +58,22 @@
       "required": ["call_api"],
       "additionalProperties": false
     },
+    "CallApiData": {
+      "type": "object",
+      "properties": {
+        "url": { "type": "string" },
+        "auth_header_name": { "type": "string" },
+        "auth_header_value": { "type": "string" },
+        "method": { "$ref": "#/definitions/HttpMethod" },
+        "body": { "type": ["string", "null"] }
+      },
+      "required": ["url", "auth_header_name", "auth_header_value"],
+      "additionalProperties": false
+    },
+    "HttpMethod": {
+      "type": "string",
+      "enum": ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"]
+    },
     "Llm": {
       "type": "object",
       "properties": {
@@ -55,22 +82,63 @@
       "required": ["llm"],
       "additionalProperties": false
     },
-    "CallApiData": {
-      "type": "object",
-      "properties": {
-        "url": { "type": "string" },
-        "auth_header_name": { "type": "string" },
-        "auth_header_value": { "type": "string" }
-      },
-      "required": ["url", "auth_header_name", "auth_header_value"],
-      "additionalProperties": false
-    },
     "LlmData": {
       "type": "object",
       "properties": {
-        "prompt": { "type": "string" }
+        "user_prompt": { "type": "string" },
+        "system_prompt": { "type": ["string", "null"] }
       },
-      "required": ["prompt"],
+      "required": ["user_prompt"],
+      "additionalProperties": false
+    },
+    "SpawnAgent": {
+      "type": "object",
+      "properties": {
+        "spawn_agent": { "$ref": "#/definitions/AgentData" }
+      },
+      "required": ["spawn_agent"],
+      "additionalProperties": false
+    },
+    "AgentData": {
+      "type": "object",
+      "properties": {
+        "input_label": { "type": "string" },
+        "output_label": { "type": "string" },
+        "is_background": { "type": "boolean" },
+        "agent_config_file": { "type": "string" },
+        "agent_config": { "$ref": "#" }
+      },
+      "oneOf": [
+        { "required": ["agent_config_file"] },
+        { "required": ["agent_config"] }
+      ],
+      "additionalProperties": false
+    },
+    "WaitForInput": {
+      "type": "object",
+      "properties": {
+        "wait_for_input": {
+          "type": "null",
+          "description": "Action to wait for input."
+        }
+      },
+      "required": ["wait_for_input"],
+      "additionalProperties": false
+    },
+    "GetAgentConfig": {
+      "type": "object",
+      "properties": {
+        "get_agent_config": { "type": "string" }
+      },
+      "required": ["get_agent_config"],
+      "additionalProperties": false
+    },
+    "SetAgentConfig": {
+      "type": "object",
+      "properties": {
+        "set_agent_config": { "type": "string" }
+      },
+      "required": ["set_agent_config"],
       "additionalProperties": false
     }
   }

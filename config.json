@@ -6,8 +6,29 @@
       "actions": [
         {
           "spawn_agent": {
-            "agent_config_file": "agent_config.json",
-            "label": "WeatherAgent",
+            "agent_config": {
+              "initial_state": "start",
+              "label": "WeatherAgent",
+              "states": {
+                "start": {
+                  "actions": [
+                    {
+                      "llm": {
+                        "user_prompt": "Provide a detailed weather report for Tokyo.",
+                        "system_prompt": "You are a knowledgeable weather assistant."
+                      }
+                    }
+                  ],
+                  "next_state": "finalize"
+                },
+                "finalize": {
+                  "actions": [],
+                  "next_state": null
+                }
+              }
+            },
+            "input_label": "weather_request",
+            "output_label": "weather_report",
             "is_background": false
           }
         }
@@ -15,7 +36,11 @@
       "next_state": "wait_result"
     },
     "wait_result": {
-      "actions": ["wait_for_input"],
+      "actions": [
+        {
+          "wait_for_input": null
+        }
+      ],
       "next_state": "process_result"
     },
     "process_result": {
